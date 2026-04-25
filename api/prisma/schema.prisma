@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+enum RunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+model Client {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  usageCapUsd  Float         @default(500)
+  agents       Agent[]
+  sessions     Session[]
+  costLogs     CostLog[]
+}
+
+model Agent {
+  id                 String                 @id @default(cuid())
+  clientId           String
+  name               String
+  apiKey             String                 @unique
+  model              String                 @default("claude-sonnet-4-6")
+  systemPrompt       String
+  temperature        Float                  @default(0.2)
+  toolList           String[]
+  sessionExpiryDays  Int                    @default(7)
+  rateLimitPerMinute Int                    @default(60)
+  maxUsageUsd        Float                  @default(100)
+  isActive           Boolean                @default(true)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  knowledgeFiles     KnowledgeFile[]
+  sessions           Session[]
+  runs               Run[]
+  apiKeyUsages       AgentApiKeyUsage[]
+  client             Client                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id          String    @id @default(cuid())
+  clientId    String
+  agentId     String
+  externalRef String?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  messages    Message[]
+  runs        Run[]
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  agent       Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId, createdAt])
+}
+
+model Message {
+  id            String   @id @default(cuid())
+  sessionId     String
+  role          String
+  content       String
+  tokenEstimate Int      @default(0)
+  createdAt     DateTime @default(now())
+  metadata      Json?
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+}
+
+model Run {
+  id            String    @id @default(cuid())
+  agentId       String
+  sessionId     String
+  status        RunStatus @default(QUEUED)
+  prompt        String
+  response      String?
+  error         String?
+  latencyMs     Int?
+  toolTrace     Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  completedAt   DateTime?
+  session       Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  agent         Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+model CostLog {
+  id           String   @id @default(cuid())
+  clientId     String
+  agentId      String?
+  sessionId    String?
+  runId        String?
+  inputTokens  Int
+  outputTokens Int
+  amountUsd    Float
+  latencyMs    Int
+  createdAt    DateTime @default(now())
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, createdAt])
+}
+
+model ToolCallTrace {
+  id          String   @id @default(cuid())
+  runId       String
+  toolName    String
+  request     Json
+  response    Json
+  latencyMs   Int
+  createdAt   DateTime @default(now())
+
+  @@index([runId])
+}
+
+model KnowledgeFile {
+  id           String           @id @default(cuid())
+  agentId       String
+  filename      String
+  mimeType      String
+  sizeBytes     Int
+  createdAt     DateTime         @default(now())
+  chunks        KnowledgeChunk[]
+  agent         Agent            @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+model KnowledgeChunk {
+  id              String   @id @default(cuid())
+  knowledgeFileId String
+  chunkIndex      Int
+  textContent     String
+  embedding       Unsupported("vector")
+  metadata        Json?
+  knowledgeFile   KnowledgeFile @relation(fields: [knowledgeFileId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeFileId, chunkIndex])
+}
+
+model AgentApiKeyUsage {
+  id          String   @id @default(cuid())
+  agentId     String
+  apiKey      String
+  requests    Int      @default(0)
+  tokens      Int      @default(0)
+  costUsd     Float    @default(0)
+  periodStart DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, apiKey, periodStart])
+}

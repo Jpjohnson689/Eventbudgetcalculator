@@ -1,0 +1,12 @@
+node_modules
+.dist
+build
+dist
+.env
+.env.*
+coverage
+pnpm-lock.yaml
+.DS_Store
+*.log
+api/prisma/dev.db
+api/prisma/dev.db-journal

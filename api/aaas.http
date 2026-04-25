@@ -1,0 +1,26 @@
+@base=http://localhost:4000
+@adminToken=local-admin-token
+@agentKey=ob_internal_example_key
+
+### Create client
+POST {{base}}/admin/clients
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Acme Corp",
+  "slug": "acme-corp"
+}
+
+### List agents
+GET {{base}}/admin/agents
+Authorization: Bearer {{adminToken}}
+
+### Sync execute
+POST {{base}}/v1/execute/sync
+x-agent-api-key: {{agentKey}}
+Content-Type: application/json
+
+{
+  "prompt": "Hello from widget"
+}

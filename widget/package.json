@@ -1,0 +1,16 @@
+{
+  "name": "@aaas/widget",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsup src/index.ts --watch --format iife --global-name OneBridgeWidget --out-dir dist",
+    "build": "tsup src/index.ts --format iife --global-name OneBridgeWidget --out-dir dist",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
